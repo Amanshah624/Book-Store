@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bookstore</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    button.active {
+      background-color: #4f46e5;
+      color: white !important;
+      border-color: #4f46e5;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark p-3 sticky-top shadow">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">📚 BookStore</a>
+      <form class="d-flex ms-auto me-2">
+        <input id="searchInput" class="form-control" type="search" placeholder="Search by title or author..." />
+      </form>
+    </div>
+  </nav>
+
+  <!-- Category Filters -->
+  <div class="container mt-4">
+    <div class="d-flex flex-wrap gap-3 justify-content-center">
+      <button class="btn btn-outline-secondary active" data-filter="all">All</button>
+      <button class="btn btn-outline-secondary" data-filter="self-help">Self-Help</button>
+      <button class="btn btn-outline-secondary" data-filter="fiction">Fiction</button>
+      <button class="btn btn-outline-secondary" data-filter="science">Science</button>
+      <button class="btn btn-outline-secondary" data-filter="children">Children</button>
+      <button class="btn btn-outline-secondary" data-filter="business">Business</button>
+      <button class="btn btn-outline-secondary" data-filter="history">History</button>
+    </div>
+  </div>
+
+  <!-- Book Grid -->
+  <div class="container my-5">
+    <h2 class="text-2xl font-semibold mb-4">📚 Popular Books</h2>
+    <div class="row g-4" id="bookGrid"></div>
+  </div>
+
+  <!-- Cart Display -->
+  <div class="container mb-5">
+    <h2 class="text-2xl font-semibold mb-4">🛒 Cart Items</h2>
+    <div id="cartItems" class="row g-4"></div>
+    <div class="d-flex justify-content-between align-items-center mt-4">
+      <h4 id="totalPrice">Total: ₹0</h4>
+      <button class="btn btn-success" onclick="startCheckout()">Buy Now</button>
+    </div>
+  </div>
+  <hr>
+
+  <h4>🛒 Cart</h4>
+  <div id="cartItems" class="row"></div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <h5 id="totalPrice">Total: ₹0</h5>
+    <button class="btn btn-success" onclick="startCheckout()">Buy Now</button>
+  </div>
+
+  <div id="orderTracking" class="mt-4 d-none">
+    <h4>✅ Order Placed!</h4>
+    <p>Your tracking number is: <strong id="trackingCode"></strong></p>
+  </div>
+</div>
+
+
+  <!-- Footer -->
+  <footer class="bg-dark text-white text-center py-4 mt-5 shadow-inner">
+    &copy; 2025 BookStore | Crafted with 📚 and ❤️
+  </footer>
+
+  <!-- Checkout Modal -->
+  <div class="modal fade" id="checkoutModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Shipping Address</h5>
+          <button type="button"class="btn-close"data-bs-dismiss="modal"><button>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-control mb-2" placeholder="Full Name" id="fullName" />
+          <input type="text" class="form-control mb-2" placeholder="Phone Number" id="phone" />
+          <input type="email" class="form-control mb-2" placeholder="Email" id="email" />
+          <input type="text" class="form-control mb-2" placeholder="Address Line" id="address" />
+          <input type="text" class="form-control mb-2" placeholder="City" id="city" />
+          <input type="text" class="form-control mb-2" placeholder="Pincode" id="pincode" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" onclick="completeOrder()">Complete Order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Book data
+  const books = [
+  { title: "Atomic Habits", author: "James Clear", price: "₹499", image: "https://images.squarespace-cdn.com/content/59c82ac46f4ca30b86d179bf/1706362642426-BI3J8PJ5LRJNO8H7WFV4/119.bookreview.AtomicHabits.jpg" },
+  { title: "The Alchemist", author: "Paulo Coelho", price: "₹399", image: "https://www.bookishadda.com/cdn/shop/files/79_ba6c2a23-4a09-46af-8e85-c4cd086235f5.png?v=1701858748&width=1920" },
+  { title: "Deep Work", author: "Cal Newport", price: "₹459", image: "https://images.squarespace-cdn.com/content/v1/62888c474203c0008b164382/5a1abfe9-b686-40b7-81b4-7c8de2de98dc/IMG_1658.jpeg" },
+  { title: "Think and Grow Rich", author: "Napoleon Hill", price: "₹349", image: "https://m.media-amazon.com/images/I/61bfj+-wArL._UF1000,1000_QL80_.jpg" },  // ← ✅ Comma added here
+  { title: "The Power of Now", author: "Eckhart Tolle", price: "₹429", image: "https://a.storyblok.com/f/181188/473984f850/0997d266dd814851bd59-15db02acfbc704.jpg" },
+  { title: "Can't Hurt Me", author: "David Goggins", price: "₹599", image: "https://kitabcorner.in/wp-content/uploads/2024/03/Cant-Hurt-me.webp" },
+  { title: "Ikigai", author: "Francesc Miralles", price: "₹320", image: "https://gyaanstore.com/cdn/shop/files/234_aaa800ec-5535-4c1e-856a-e003ddf332e5.png?v=1701690414&width=1946" },
+  { title: "Start With Why", author: "Simon Sinek", price: "₹499", image: "https://images.squarespace-cdn.com/content/v1/59c82ac46f4ca30b86d179bf/1718578174886-HGNXPWDKSSNEQK9NA6AJ/124.bookreview.StartWithWhy.jpg" },
+  { title: "Rich Dad Poor Dad", author: "Robert Kiyosaki", price: "₹399", image: "https://www.bookishadda.com/cdn/shop/files/240_1f619642-5185-4dc5-8489-4c4bcb27c876.png?v=1701691051&width=1920" },
+  { title: "Mindset", author: "Carol Dweck", price: "₹475", image: "https://images.squarespace-cdn.com/content/v1/59c82ac46f4ca30b86d179bf/1630585047225-UKS4Y0IH7NDAUXLCLKGT/46.bookreview.mindset.jpg" },
+  { title: "The Subtle Art of Not Giving a F*ck", author: "Mark Manson", price: "₹499", image: "https://static-01.daraz.com.bd/p/36fccd8c787fbdd2bc551f57af7f4120.jpg" },
+  { title: "Sapiens", author: "Yuval Noah Harari", price: "₹550", image: "https://miro.medium.com/v2/resize:fit:592/0*RArKNBFL91CwGeWU" },
+  { title: "Man's Search for Meaning", author: "Victor Frankl", price: "₹350", image: "https://images-eu.ssl-images-amazon.com/images/I/61HKXQ0yZzL._AC_UL210_SR210,210_.jpg" },
+  { title: "The Psychology of Money", author: "Morgan Housel", price: "₹399", image: "https://images.meesho.com/images/products/415178915/i80jq_512.webp" },
+  { title: "How to Win Friends & Influence People", author: "Dale Carnegie", price: "₹299", image: "https://i.ebayimg.com/images/g/sy8AAOSwNFxkmi4J/s-l400.jpg" },
+  { title: "1984", author: "George Orwell", price: "₹449", image: "https://www.penguin.co.uk/_next/image?url=https%3A%2F%2Fcdn.penguin.co.uk%2Fdam-assets%2Fbooks%2F9780141036144%2F9780141036144-jacket-large.jpg&w=614&q=100" },
+  { title: "Becoming", author: "Michelle Obama", price: "₹650", image: "https://res.cloudinary.com/itimages/image/upload/f_auto,q_auto,w_800,c_limit/prd/splash_cover_art/kyn8yq3yfsmzkkbxxnvc" },
+  { title: "The Book Thief", author: "Markus Zusak", price: "₹499", image: "https://peterviney.com/wp-content/uploads/2014/03/movies-the-book-thief-poster.jpg" },
+  { title: "Dopamine Detox", author: "Thibaut Meurisse", price: "₹299", image: "https://rukminim2.flixcart.com/image/850/1000/xif0q/book/n/y/n/dopamine-detox-guide-original-imagzfbudhkuwvcx.jpeg?q=90&crop=false" },
+  { title: "Rework", author: "Jason Fried", price: "₹350", image: "https://daveschoenbeck.com/wp-content/uploads/2020/08/B2B6606E-36C6-4A13-BB43-A022E0AFC4D4.jpeg.webp" }
+];
+
+
+    function renderBooks() {
+      const bookGrid = document.getElementById("bookGrid");
+      bookGrid.innerHTML = "";
+      books.forEach(book => {
+        const col = document.createElement("div");
+        col.className = "col-sm-6 col-md-4 col-lg-3";
+        col.innerHTML = `
+          <div class="card shadow-sm h-100">
+            <img src="${book.image}" class="card-img-top" alt="${book.title}" />
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title">${book.title}</h5>
+              <p class="text-muted small mb-1">by ${book.author}</p>
+              <p class="fw-bold text-primary mb-2">${book.price}</p>
+              <a href="book.html" class="btn btn-outline-primary mt-auto">View Details</a>
+              <button class="btn btn-warning mt-2 add-to-cart">Add to Cart</button>
+            </div>
+          </div>
+        `;
+        bookGrid.appendChild(col);
+      });
+    }
+
+    function renderCartItems() {
+      const cartItems = document.getElementById("cartItems");
+      const totalPrice = document.getElementById("totalPrice");
+      cartItems.innerHTML = "";
+      let total = 0;
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+      if (cart.length === 0) {
+        cartItems.innerHTML = `<div class="col-12 text-center">Your cart is empty!</div>`;
+        totalPrice.textContent = "Total: ₹0";
+        return;
+      }
+
+      cart.forEach(item => {
+        const col = document.createElement("div");
+        col.className = "col-md-4 col-lg-3";
+        col.innerHTML = `
+          <div class="card h-100 shadow">
+            <img src="${item.image}" class="card-img-top" alt="${item.title}" />
+            <div class="card-body">
+              <h5 class="card-title">${item.title}</h5>
+              <p class="fw-bold text-primary">${item.price}</p>
+            </div>
+          </div>
+        `;
+        cartItems.appendChild(col);
+        total += parseFloat(item.price.replace("₹", ""));
+      });
+
+      totalPrice.textContent = `Total: ₹${total}`;
+    }
+
+    function startCheckout() {
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      if (cart.length === 0) return alert("Cart is empty!");
+      const modal = new bootstrap.Modal(document.getElementById("checkoutModal"));
+      modal.show();
+    }
+
+    function completeOrder() {
+      const name = document.getElementById("fullName").value;
+      const phone = document.getElementById("phone").value;
+      const email = document.getElementById("email").value;
+      const address = document.getElementById("address").value;
+      const city = document.getElementById("city").value;
+      const pin = document.getElementById("pincode").value;
+
+      if (!name || !phone || !email || !address || !city || !pin) {
+        alert("Please fill all fields.");
+        return;
+      }
+
+      const trackingNumber = "TRK" + Math.floor(100000 + Math.random() * 900000);
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+      const order = {
+        trackingNumber,
+        name, phone, email, address, city, pin,
+        items: cart,
+        date: new Date().toLocaleString()
+      };
+
+      const orders = JSON.parse(localStorage.getItem("orders")) || [];
+      orders.push(order);
+      localStorage.setItem("orders", JSON.stringify(orders));
+      localStorage.removeItem("cart");
+
+      alert(`Order Placed! Tracking Number: ${trackingNumber}`);
+      renderCartItems();
+      bootstrap.Modal.getInstance(document.getElementById("checkoutModal")).hide();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderBooks();
+      renderCartItems();
+    });
+
+    document.addEventListener("click", function (e) {
+      if (e.target.classList.contains("add-to-cart")) {
+        const card = e.target.closest(".card");
+        const title = card.querySelector(".card-title").textContent;
+        const price = card.querySelector(".fw-bold").textContent;
+        const image = card.querySelector("img").src;
+
+        const book = { title, price, image };
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        cart.push(book);
+        localStorage.setItem("cart", JSON.stringify(cart));
+
+        alert(`✅ "${title}" added to cart!`);
+        renderCartItems();
+      }
+    });
+    books.forEach(book => {
+      const col = document.createElement("div");
+      col.className = "col-md-3";
+      col.innerHTML = `
+        <div class="card mb-3">
+          <img src="${book.image}" class="card-img-top" height="200" style="object-fit:cover;">
+          <div class="card-body">
+            <h5 class="card-title">${book.title}</h5>
+            <p class="text-muted small">by ${book.author}</p>
+            <p class="fw-bold text-primary">₹${book.price}</p>
+            <button class="btn btn-warning w-100 add-to-cart">Add to Cart</button>
+          </div>
+        </div>
+      `;
+      bookGrid.appendChild(col);
+  
+      col.querySelector(".add-to-cart").addEventListener("click", () => {
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+        cart.push(book);
+        localStorage.setItem("cart", JSON.stringify(cart));
+        renderCartItems();
+      });
+    });
+  
+    function renderCartItems() {
+      const cartItems = document.getElementById("cartItems");
+      const totalPrice = document.getElementById("totalPrice");
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      cartItems.innerHTML = "";
+      let total = 0;
+  
+      if (cart.length === 0) {
+        cartItems.innerHTML = "<p class='text-muted'>Cart is empty.</p>";
+      } else {
+        cart.forEach(book => {
+          const col = document.createElement("div");
+          col.className = "col-md-3";
+          col.innerHTML = `
+            <div class="card">
+              <img src="${book.image}" class="card-img-top" height="150" style="object-fit:cover;">
+              <div class="card-body">
+                <h6>${book.title}</h6>
+                <p class="fw-bold text-primary mb-0">₹${book.price}</p>
+              </div>
+            </div>
+          `;
+          cartItems.appendChild(col);
+          total += parseInt(book.price);
+        });
+      }
+      totalPrice.textContent = `Total: ₹${total}`;
+    }
+  
+    function startCheckout() {
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      if (cart.length === 0) return alert("Cart is empty!");
+  
+      const total = cart.reduce((sum, book) => sum + parseInt(book.price), 0);
+  
+      const options = {
+        key: "rzp_test_YourKeyHere", // Replace with your Razorpay test/live key
+        amount: total * 100,
+        currency: "INR",
+        name: "Bookstore",
+        description: "Book Purchase",
+        image: "https://cdn-icons-png.flaticon.com/512/29/29302.png",
+        handler: function (response) {
+          const trackingCode = "TRK" + Math.floor(Math.random() * 1000000);
+          document.getElementById("orderTracking").classList.remove("d-none");
+          document.getElementById("trackingCode").textContent = trackingCode;
+          localStorage.removeItem("cart");
+          renderCartItems();
+        },
+        prefill: {
+          name: "Your Name",
+          email: "user@example.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#3399cc"
+        }
+      };
+  
+      const rzp = new Razorpay(options);
+      rzp.open();
+    }
+  
+    renderCartItems();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
